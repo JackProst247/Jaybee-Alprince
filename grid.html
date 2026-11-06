@@ -1,0 +1,255 @@
+<title>JayBee.B & Alprince Macaraeg Igne</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400&display=swap">
+<style>
+/* Layout: one quiet title block, one large portrait, then a two-column drift of tall photos that open into a viewer. */
+:root {
+  --paper: #f7f0f0;
+  --paper-2: #efe4e5;
+  --ink: #2c2226;
+  --ink-soft: #7a6a6f;
+  --rose: #b0636f;
+  --line: #e0d0d2;
+  --font-display: "Cormorant Garamond", "Cormorant", Georgia, "Times New Roman", serif;
+  --font-body: "Jost", "Helvetica Neue", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #171114;
+    --paper-2: #211a1d;
+    --ink: #f2e8ea;
+    --ink-soft: #a8979c;
+    --rose: #d9899a;
+    --line: #35282d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #171114;
+  --paper-2: #211a1d;
+  --ink: #f2e8ea;
+  --ink-soft: #a8979c;
+  --rose: #d9899a;
+  --line: #35282d;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-weight: 300;
+  font-size: 16px;
+  line-height: 1.6;
+  padding-block: 56px 72px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1040px; margin: 0 auto; }
+
+header { text-align: center; padding-block: 8px 44px; }
+.kicker {
+  font-size: 11px; letter-spacing: 0.32em; text-transform: uppercase;
+  color: var(--ink-soft); margin: 0 0 28px;
+}
+h1 {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: clamp(34px, 8.4vw, 76px);
+  line-height: 1.12;
+  letter-spacing: 0.01em;
+  margin: 0;
+  text-wrap: balance;
+}
+h1 .amp {
+  display: block;
+  font-style: italic;
+  font-weight: 300;
+  color: var(--rose);
+  font-size: 0.72em;
+  line-height: 1;
+  margin-block: 6px;
+}
+.rule { width: 44px; height: 1px; background: var(--rose); margin: 34px auto 0; border: 0; }
+
+.feature { margin: 0 auto 64px; max-width: 520px; }
+.feature button, .tile button {
+  display: block; width: 100%; padding: 0; border: 0; background: var(--paper-2);
+  cursor: zoom-in; overflow: hidden;
+}
+.feature img { display: block; width: 100%; height: auto; }
+.cap {
+  font-family: var(--font-display); font-style: italic; font-weight: 300;
+  font-size: 20px; text-align: center; color: var(--ink-soft); margin: 18px 0 0;
+}
+
+.drift { columns: 2; column-gap: 14px; }
+.tile { break-inside: avoid; margin: 0 0 14px; }
+.tile button img { display: block; width: 100%; height: auto; transition: transform .6s ease; }
+.tile button:hover img { transform: scale(1.025); }
+.tile:nth-child(3n+2) { margin-top: 28px; }
+button:focus-visible { outline: 2px solid var(--rose); outline-offset: 3px; }
+
+footer { text-align: center; margin-top: 64px; }
+footer p {
+  font-family: var(--font-display); font-style: italic; font-size: 22px;
+  color: var(--ink-soft); margin: 18px 0 0;
+}
+
+@media (min-width: 760px) {
+  body { padding-block: 88px 104px; }
+  .drift { columns: 3; column-gap: 22px; }
+  .tile { margin-bottom: 22px; }
+  .tile:nth-child(3n+2) { margin-top: 44px; }
+}
+
+/* viewer */
+.viewer {
+  position: fixed; inset: 0; z-index: 50; display: none;
+  background: color-mix(in srgb, var(--paper) 96%, transparent);
+  align-items: center; justify-content: center;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+.viewer.open { display: flex; }
+.viewer img {
+  max-width: 100%; max-height: 82vh; max-height: 82dvh; width: auto; height: auto;
+  box-shadow: 0 24px 60px -24px rgba(44, 34, 38, .45);
+}
+.viewer .count {
+  position: absolute; top: calc(18px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
+  font-size: 12px; letter-spacing: .28em; color: var(--ink-soft); font-variant-numeric: tabular-nums;
+}
+.viewer .ctl {
+  position: absolute; background: none; border: 0; color: var(--ink); cursor: pointer;
+  font-family: var(--font-display); font-size: 40px; line-height: 1; padding: 14px 18px;
+}
+.viewer .close { top: calc(6px + env(safe-area-inset-top, 0px)); right: calc(6px + env(safe-area-inset-right, 0px)); font-size: 34px; }
+.viewer .prev { left: calc(2px + env(safe-area-inset-left, 0px)); top: 50%; transform: translateY(-50%); }
+.viewer .next { right: calc(2px + env(safe-area-inset-right, 0px)); top: 50%; transform: translateY(-50%); }
+.viewer .ctl:hover { color: var(--rose); }
+.viewer .ctl:focus-visible { outline: 2px solid var(--rose); outline-offset: -4px; }
+@media (max-width: 600px) {
+  .viewer img { max-height: 76dvh; }
+  .viewer .prev, .viewer .next { top: auto; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); transform: none; }
+  .viewer .prev { left: 24px; } .viewer .next { right: 24px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .tile button img { transition: none; }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="kicker">Бидний дурсамж</p>
+    <h1>JayBee.B <span class="amp">&amp;</span> Alprince Macaraeg Igne</h1>
+    <hr class="rule">
+  </header>
+
+  <figure class="feature">
+    <button type="button" data-i="16" aria-label="Зургийг томруулах">
+      <img src="img/17.jpg" alt="Хоёулаа хамт, ойр ойрхон" width="1100" height="1467">
+    </button>
+    <figcaption class="cap">хоёулаа, ойрхон</figcaption>
+  </figure>
+
+  <main class="drift" id="drift"></main>
+
+  <footer>
+    <hr class="rule">
+    <p>JayBee.B &amp; Alprince</p>
+  </footer>
+</div>
+
+<div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-label="Зураг үзэх">
+  <span class="count" id="count"></span>
+  <button class="ctl close" type="button" id="close" aria-label="Хаах">&times;</button>
+  <button class="ctl prev" type="button" id="prev" aria-label="Өмнөх">&#8249;</button>
+  <img id="big" alt="">
+  <button class="ctl next" type="button" id="next" aria-label="Дараах">&#8250;</button>
+</div>
+
+<script>
+(function () {
+  var total = 54;
+  var ASP = [0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.7498, 0.7498, 0.7498, 0.5629, 0.5629, 0.5629, 0.5629, 0.5629, 1.3333, 1.7766, 1.3333, 0.5629, 1.3333, 1.3333, 1.3333, 1.3333, 0.5629, 0.5629, 1.3333, 1.3333, 1.7766, 0.5629, 0.5629, 0.5629, 0.5629, 0.5629, 0.5629, 0.5629, 1.3333, 1.3333, 1.3333, 1.0463, 0.5629, 1.3333, 1.3333, 1.3333, 0.75, 1.7766];
+  var order = [];
+  for (var n = 1; n <= total; n++) order.push(n);
+  // featured photo (17) sits at the top; the drift holds the rest
+  var drift = document.getElementById('drift');
+  var gallery = order.filter(function (n) { return n !== 17; });
+  var sources = order.map(function (n) { return 'img/' + (n < 10 ? '0' + n : n) + '.jpg'; });
+
+  gallery.forEach(function (n) {
+    var idx = n - 1;
+    var fig = document.createElement('figure');
+    fig.className = 'tile';
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('data-i', idx);
+    b.setAttribute('aria-label', 'Зургийг томруулах');
+    var im = document.createElement('img');
+    im.src = sources[idx];
+    im.alt = 'Дурсамжийн зураг ' + n;
+    im.loading = 'lazy';
+    im.decoding = 'async';
+    im.width = 1000; im.height = Math.round(1000 / ASP[n - 1]);
+    b.appendChild(im);
+    fig.appendChild(b);
+    drift.appendChild(fig);
+  });
+
+  var viewer = document.getElementById('viewer');
+  var big = document.getElementById('big');
+  var count = document.getElementById('count');
+  var cur = 0, lastFocus = null;
+
+  function show(i) {
+    cur = (i + total) % total;
+    big.src = sources[cur];
+    big.alt = 'Дурсамжийн зураг ' + (cur + 1);
+    count.textContent = (cur + 1) + ' / ' + total;
+  }
+  function open(i, from) {
+    lastFocus = from || null;
+    show(i);
+    viewer.classList.add('open');
+    document.getElementById('close').focus();
+  }
+  function close() {
+    viewer.classList.remove('open');
+    if (lastFocus) lastFocus.focus();
+  }
+
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-i]');
+    if (b) open(parseInt(b.getAttribute('data-i'), 10), b);
+  });
+  document.getElementById('close').addEventListener('click', close);
+  document.getElementById('prev').addEventListener('click', function () { show(cur - 1); });
+  document.getElementById('next').addEventListener('click', function () { show(cur + 1); });
+  viewer.addEventListener('click', function (e) { if (e.target === viewer) close(); });
+
+  document.addEventListener('keydown', function (e) {
+    if (!viewer.classList.contains('open')) return;
+    if (e.key === 'Escape') close();
+    else if (e.key === 'ArrowLeft') show(cur - 1);
+    else if (e.key === 'ArrowRight') show(cur + 1);
+  });
+
+  var sx = null;
+  viewer.addEventListener('touchstart', function (e) { sx = e.touches[0].clientX; }, { passive: true });
+  viewer.addEventListener('touchend', function (e) {
+    if (sx === null) return;
+    var dx = e.changedTouches[0].clientX - sx;
+    if (Math.abs(dx) > 50) show(dx < 0 ? cur + 1 : cur - 1);
+    sx = null;
+  }, { passive: true });
+})();
+</script>
