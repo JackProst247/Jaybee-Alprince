@@ -211,53 +211,157 @@ canvas#gl:active { cursor: grabbing; }
   var scene = new THREE.Scene();
   var camera = new THREE.PerspectiveCamera(58, 1, 0.1, 140);
 
-  /* ---------- room ---------- */
-  var RW = 52, RD = 32, RH = 4.4, HX = RW / 2, HZ = RD / 2;
-  scene.add(new THREE.AmbientLight(0xfff3f1, 0.95));
-  var sun = new THREE.DirectionalLight(0xffffff, 0.55);
-  sun.position.set(4, 9, 6); scene.add(sun);
+  /* ---------- rooms: a 3 x 2 weave of connected galleries ---------- */
+  var RW = 14, RD = 12, RH = 4.2, T = 0.15;           // room size, half wall thickness
+  var HXi = RW / 2 - T, HZi = RD / 2 - T;             // interior half sizes
+  var DW = 3.2, DH = 3.0;                              // doorway width / height
+  var COLS = 3, ROWS = 2;
+  var X0 = -RW * COLS / 2, Z0 = -RD * ROWS / 2;        // outer corner
+  var ROOMS = [];
+  var TINTS = [0xf0e4e4, 0xe4e9df, 0xede5d7, 0xe5e2eb, 0xe0e7eb, 0xebddd4];
+  var FLOORS = [0xd9cfcf, 0xcfd6c9, 0xd8cfbd, 0xd1cddb, 0xc9d3da, 0xd7c6bb];
+  (function () {
+    for (var r = 0; r < ROWS; r++) for (var c = 0; c < COLS; c++) {
+      ROOMS.push({ c: c, r: r, cx: X0 + RW * (c + 0.5), cz: Z0 + RD * (r + 0.5), i: r * COLS + c });
+    }
+  })();
 
-  var floorMat = new THREE.MeshStandardMaterial({ color: 0xd8d0cd, roughness: 0.55, metalness: 0.0 });
-  var floor = new THREE.Mesh(new THREE.PlaneGeometry(RW, RD), floorMat);
-  floor.rotation.x = -Math.PI / 2; scene.add(floor);
+  scene.add(new THREE.AmbientLight(0xfff3f1, 0.8));
+  var sun = new THREE.DirectionalLight(0xffffff, 0.45);
+  sun.position.set(6, 12, 8); scene.add(sun);
 
   var ceilMat = new THREE.MeshBasicMaterial({ color: 0x2b2529, side: THREE.DoubleSide });
-  var ceil = new THREE.Mesh(new THREE.PlaneGeometry(RW, RD), ceilMat);
+  var ceil = new THREE.Mesh(new THREE.PlaneGeometry(RW * COLS, RD * ROWS), ceilMat);
   ceil.rotation.x = Math.PI / 2; ceil.position.y = RH; scene.add(ceil);
-
-  function wall(w, color, px, pz, ry) {
-    var m = new THREE.Mesh(new THREE.PlaneGeometry(w, RH), new THREE.MeshStandardMaterial({ color: color, roughness: 0.9 }));
-    m.position.set(px, RH / 2, pz); m.rotation.y = ry; scene.add(m); return m;
-  }
-  wall(RW, 0x2a232b, 0, -HZ, 0);              // north (dark feature wall)
-  wall(RW, 0xefebe9, 0, HZ, Math.PI);         // south
-  wall(RD, 0xebe6e5, HX, 0, -Math.PI / 2);    // east
-  wall(RD, 0xebe6e5, -HX, 0, Math.PI / 2);    // west
-
-  // baseboards
-  var bbMat = new THREE.MeshStandardMaterial({ color: 0xcdb9bb, roughness: 0.8 });
-  [[RW, 0.12, 0.06, 0, 0.06, -HZ + 0.03], [RW, 0.12, 0.06, 0, 0.06, HZ - 0.03]].forEach(function (b) {
-    var m = new THREE.Mesh(new THREE.BoxGeometry(b[0], b[1], b[2]), bbMat); m.position.set(b[3], b[4], b[5]); scene.add(m);
-  });
-  [[0.06, 0.12, RD, HX - 0.03, 0.06, 0], [0.06, 0.12, RD, -HX + 0.03, 0.06, 0]].forEach(function (b) {
-    var m = new THREE.Mesh(new THREE.BoxGeometry(b[0], b[1], b[2]), bbMat); m.position.set(b[3], b[4], b[5]); scene.add(m);
-  });
-
-  // light tracks on the ceiling
+  var darkWall = 0x2a232b;
+  var trimMat = new THREE.MeshStandardMaterial({ color: 0x1b1517, roughness: 0.5 });
   var trackMat = new THREE.MeshBasicMaterial({ color: 0xfff1e6 });
-  [-HZ + 1.4, HZ - 1.4].forEach(function (z) {
-    var t = new THREE.Mesh(new THREE.BoxGeometry(RW - 3, 0.04, 0.12), trackMat); t.position.set(0, RH - 0.03, z); scene.add(t);
-  });
-  [-HX + 1.4, HX - 1.4].forEach(function (x) {
-    var t = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.04, RD - 3), trackMat); t.position.set(x, RH - 0.03, 0); scene.add(t);
+  var bbMat = new THREE.MeshStandardMaterial({ color: 0xcdb9bb, roughness: 0.8 });
+  var benchMat = new THREE.MeshStandardMaterial({ color: 0xb9a48f, roughness: 0.7 });
+  var benchTopMat = new THREE.MeshStandardMaterial({ color: 0xcdbaa4, roughness: 0.6 });
+
+  var SOLIDS = [];   // axis-aligned boxes {x0,x1,z0,z1}
+  var BENCHES = [];
+  function solid(x0, x1, z0, z1) { SOLIDS.push({ x0: x0, x1: x1, z0: z0, z1: z1 }); }
+
+  // plane on the inside face of one wall of a room; a0..a1 along the wall, y0..y1 vertical
+  function wallPiece(room, side, a0, a1, y0, y1, color) {
+    var w = a1 - a0, h = y1 - y0; if (w <= 0.001 || h <= 0.001) return;
+    var m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ color: color, roughness: 0.9 }));
+    var am = (a0 + a1) / 2, y = (y0 + y1) / 2;
+    if (side === 'N') { m.position.set(room.cx + am, y, room.cz - HZi); }
+    if (side === 'S') { m.position.set(room.cx + am, y, room.cz + HZi); m.rotation.y = Math.PI; }
+    if (side === 'E') { m.position.set(room.cx + HXi, y, room.cz + am); m.rotation.y = -Math.PI / 2; }
+    if (side === 'W') { m.position.set(room.cx - HXi, y, room.cz + am); m.rotation.y = Math.PI / 2; }
+    scene.add(m);
+  }
+  function hasDoor(room, side) {
+    if (side === 'W') return room.c > 0;
+    if (side === 'E') return room.c < COLS - 1;
+    if (side === 'N') return room.r > 0;
+    return room.r < ROWS - 1;
+  }
+  function wallColor(room, side) {
+    var outerN = side === 'N' && room.r === 0, outerS = side === 'S' && room.r === ROWS - 1;
+    return (outerN || outerS) ? darkWall : TINTS[room.i];
+  }
+
+  ROOMS.forEach(function (room) {
+    // floor
+    var fl = new THREE.Mesh(new THREE.PlaneGeometry(RW, RD), new THREE.MeshStandardMaterial({ color: FLOORS[room.i], roughness: 0.55 }));
+    fl.rotation.x = -Math.PI / 2; fl.position.set(room.cx, 0, room.cz); scene.add(fl);
+
+    ['N', 'S', 'E', 'W'].forEach(function (side) {
+      var L = (side === 'N' || side === 'S') ? RW - 2 * T : RD - 2 * T, col = wallColor(room, side);
+      if (hasDoor(room, side)) {
+        wallPiece(room, side, -L / 2, -DW / 2, 0, RH, col);
+        wallPiece(room, side, DW / 2, L / 2, 0, RH, col);
+        wallPiece(room, side, -DW / 2, DW / 2, DH, RH, col);
+        // door frame: two jambs and a lintel
+        var horiz = (side === 'N' || side === 'S');
+        var px = horiz ? room.cx : room.cx + (side === 'E' ? 1 : -1) * (RW / 2);
+        var pz = horiz ? room.cz + (side === 'S' ? 1 : -1) * (RD / 2) : room.cz;
+        if ((side === 'E' || side === 'S')) {
+          [-1, 1].forEach(function (s) {
+            var j = new THREE.Mesh(new THREE.BoxGeometry(horiz ? 0.14 : 0.34, DH, horiz ? 0.34 : 0.14), trimMat);
+            j.position.set(px + (horiz ? s * DW / 2 : 0), DH / 2, pz + (horiz ? 0 : s * DW / 2)); scene.add(j);
+          });
+          var lt = new THREE.Mesh(new THREE.BoxGeometry(horiz ? DW + 0.14 : 0.34, 0.14, horiz ? 0.34 : DW + 0.14), trimMat);
+          lt.position.set(px, DH, pz); scene.add(lt);
+        }
+      } else {
+        wallPiece(room, side, -L / 2, L / 2, 0, RH, col);
+      }
+      // baseboard
+      var hz = (side === 'N' || side === 'S');
+      var bb = new THREE.Mesh(new THREE.BoxGeometry(hz ? L : 0.06, 0.12, hz ? 0.06 : L), bbMat);
+      bb.position.set(room.cx + (side === 'E' ? HXi - 0.03 : side === 'W' ? -HXi + 0.03 : 0), 0.06,
+                      room.cz + (side === 'S' ? HZi - 0.03 : side === 'N' ? -HZi + 0.03 : 0));
+      scene.add(bb);
+    });
+
+    // ceiling light tracks
+    [-HZi + 1.6, HZi - 1.6].forEach(function (dz) {
+      var t = new THREE.Mesh(new THREE.BoxGeometry(RW - 3, 0.04, 0.12), trackMat); t.position.set(room.cx, RH - 0.03, room.cz + dz); scene.add(t);
+    });
+    var pl = new THREE.PointLight(0xffeedd, 0.35, 16, 1.5); pl.position.set(room.cx, 3.6, room.cz); scene.add(pl);
+
+    // bench in the middle
+    var b = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.46, 0.7), benchMat); b.position.set(room.cx, 0.23, room.cz); scene.add(b);
+    var bt = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.06, 0.8), benchTopMat); bt.position.set(room.cx, 0.49, room.cz); scene.add(bt);
+    BENCHES.push({ x0: room.cx - 1.3, x1: room.cx + 1.3, z0: room.cz - 0.45, z1: room.cz + 0.45 });
+
+    // roman numeral above the middle of the room
+    var NUM = ['I', 'II', 'III', 'IV', 'V', 'VI'][room.i];
+    var cv = document.createElement('canvas'); cv.width = 256; cv.height = 128;
+    var tx = new THREE.CanvasTexture(cv);
+    (function paint() {
+      var g = cv.getContext('2d'); g.clearRect(0, 0, 256, 128);
+      g.font = 'italic 300 84px "Cormorant Garamond", Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillStyle = 'rgba(255,236,224,0.85)'; g.fillText(NUM, 128, 64); tx.needsUpdate = true;
+      if (document.fonts && document.fonts.ready && !paint.done) { paint.done = true; document.fonts.ready.then(paint); }
+    })();
+    var sg = new THREE.Sprite(new THREE.SpriteMaterial({ map: tx, transparent: true, depthWrite: false }));
+    sg.scale.set(1.6, 0.8, 1); sg.position.set(room.cx, 3.5, room.cz); scene.add(sg);
   });
 
-  // centre bench
-  var benchMat = new THREE.MeshStandardMaterial({ color: 0xb9a48f, roughness: 0.7 });
-  var bench = new THREE.Mesh(new THREE.BoxGeometry(3.0, 0.46, 0.9), benchMat);
-  bench.position.set(0, 0.23, 0); scene.add(bench);
-  var benchTop = new THREE.Mesh(new THREE.BoxGeometry(3.1, 0.06, 1.0), new THREE.MeshStandardMaterial({ color: 0xcdbaa4, roughness: 0.6 }));
-  benchTop.position.set(0, 0.49, 0); scene.add(benchTop);
+  // collision walls: every wall line, split at the doorways
+  (function () {
+    var i, gaps;
+    var zl = [Z0, Z0 + RD, Z0 + 2 * RD];
+    zl.forEach(function (z, li) {
+      var xs = X0, end = X0 + RW * COLS;
+      var cuts = [];
+      if (li === 1) for (i = 0; i < COLS; i++) cuts.push(X0 + RW * (i + 0.5));
+      var a = xs;
+      cuts.forEach(function (cc) { solid(a, cc - DW / 2, z - T, z + T); a = cc + DW / 2; });
+      solid(a, end, z - T, z + T);
+    });
+    for (i = 0; i <= COLS; i++) {
+      var x = X0 + RW * i, a = Z0, endZ = Z0 + RD * ROWS, cuts = [];
+      if (i > 0 && i < COLS) for (var r = 0; r < ROWS; r++) cuts.push(Z0 + RD * (r + 0.5));
+      cuts.forEach(function (cc) { solid(x - T, x + T, a, cc - DW / 2); a = cc + DW / 2; });
+      solid(x - T, x + T, a, endZ);
+    }
+  })();
+
+  // push a circle out of a list of boxes
+  function pushOut(p, r, boxes) {
+    for (var it = 0; it < 3; it++) {
+      for (var i = 0; i < boxes.length; i++) {
+        var b = boxes[i];
+        var nx = Math.max(b.x0, Math.min(b.x1, p.x)), nz = Math.max(b.z0, Math.min(b.z1, p.z));
+        var dx = p.x - nx, dz = p.z - nz, d2 = dx * dx + dz * dz;
+        if (d2 >= r * r) continue;
+        if (d2 > 1e-8) { var d = Math.sqrt(d2); p.x = nx + dx / d * r; p.z = nz + dz / d * r; }
+        else {
+          var l = p.x - b.x0, rr = b.x1 - p.x, t = p.z - b.z0, bo = b.z1 - p.z, m = Math.min(l, rr, t, bo);
+          if (m === l) p.x = b.x0 - r; else if (m === rr) p.x = b.x1 + r; else if (m === t) p.z = b.z0 - r; else p.z = b.z1 + r;
+        }
+      }
+    }
+  }
+  var WALLS_AND_BENCHES = SOLIDS.concat(BENCHES);
 
   /* ---------- picture frames ---------- */
   var glowCanvas = document.createElement('canvas'); glowCanvas.width = glowCanvas.height = 128;
@@ -275,7 +379,7 @@ canvas#gl:active { cursor: grabbing; }
   var loaded = 0;
 
   function frameH(n) { var a = ASP[n - 1]; return a >= 1.6 ? 1.45 : a >= 1 ? 1.75 : 2.1; }
-  function addFrame(n, wall, along, scale) {
+  function addFrame(n, room, side, along, scale) {
     var asp = ASP[n - 1];
     var h = frameH(n) * (scale || 1), w = h * asp;
     var g = new THREE.Group();
@@ -292,31 +396,44 @@ canvas#gl:active { cursor: grabbing; }
       pm.map = tx; pm.color.set(0xffffff); pm.needsUpdate = true;
       loaded++; if (loaded >= 4) document.getElementById('loading').classList.add('gone');
     });
-    var y = 1.9 * (scale && scale > 1 ? 1.08 : 1);
-    if (wall === 'N') { g.position.set(along, y, -HZ); }
-    if (wall === 'S') { g.position.set(along, y, HZ); g.rotation.y = Math.PI; }
-    if (wall === 'E') { g.position.set(HX, y, along); g.rotation.y = -Math.PI / 2; }
-    if (wall === 'W') { g.position.set(-HX, y, along); g.rotation.y = Math.PI / 2; }
+    var y = 1.85;
+    if (side === 'N') { g.position.set(room.cx + along, y, room.cz - HZi); }
+    if (side === 'S') { g.position.set(room.cx + along, y, room.cz + HZi); g.rotation.y = Math.PI; }
+    if (side === 'E') { g.position.set(room.cx + HXi, y, room.cz + along); g.rotation.y = -Math.PI / 2; }
+    if (side === 'W') { g.position.set(room.cx - HXi, y, room.cz + along); g.rotation.y = Math.PI / 2; }
     scene.add(g);
   }
-  function spread(list, wall, length, scales) {
-    list.forEach(function (n, i) {
-      addFrame(n, wall, -length / 2 + (i + 0.5) * length / list.length, scales && scales[n]);
-    });
-  }
+
   (function layout() {
-    var gap = 0.5, walls = [['N', RW - 4], ['E', RD - 4], ['S', RW - 4], ['W', RD - 4]];
-    var ws = [], total = 0, n;
-    for (n = 1; n <= TOTAL; n++) { var w = frameH(n) * ASP[n - 1] + 0.12; ws.push(w); total += w; }
-    var capSum = walls.reduce(function (a, b) { return a + b[1]; }, 0), idx = 0;
-    walls.forEach(function (wl, wi) {
-      var share = total * wl[1] / capSum, list = [], sum = 0;
-      while (idx < TOTAL && (wi === walls.length - 1 || sum + ws[idx] / 2 <= share)) { list.push(idx); sum += ws[idx]; idx++; }
-      var free = (wl[1] - sum) / (list.length + 1), pos = -wl[1] / 2;
-      list.forEach(function (k) {
-        pos += free + ws[k] / 2;
-        addFrame(k + 1, wl[0], pos);
-        pos += ws[k] / 2;
+    var perRoom = TOTAL / ROOMS.length, n = 1;
+    ROOMS.forEach(function (room, ri) {
+      var last = Math.round(perRoom * (ri + 1));
+      var list = []; for (; n <= last; n++) list.push(n);
+      // free stretches of wall in this room
+      var segs = [];
+      ['N', 'E', 'S', 'W'].forEach(function (side) {
+        var L = (side === 'N' || side === 'S') ? RW - 2 * T : RD - 2 * T;
+        if (hasDoor(room, side)) {
+          segs.push({ side: side, a: -L / 2 + 0.5, b: -DW / 2 - 0.6 });
+          segs.push({ side: side, a: DW / 2 + 0.6, b: L / 2 - 0.5 });
+        } else segs.push({ side: side, a: -L / 2 + 0.5, b: L / 2 - 0.5 });
+      });
+      var cap = segs.reduce(function (s, g) { return s + (g.b - g.a); }, 0);
+      var ws = list.map(function (k) { return frameH(k) * ASP[k - 1] + 0.12; });
+      var total = ws.reduce(function (a, b) { return a + b; }, 0);
+      var idx = 0;
+      segs.forEach(function (sg, si) {
+        var len = sg.b - sg.a, share = total * len / cap, items = [], sum = 0;
+        while (idx < list.length && (si === segs.length - 1 || sum + ws[idx] / 2 <= share)) { items.push(idx); sum += ws[idx]; idx++; }
+        if (!items.length) return;
+        var sc = Math.min(1, (len - 0.3 * items.length) / sum);
+        var free = (len - sum * sc) / (items.length + 1), pos = sg.a;
+        items.forEach(function (k) {
+          var w = ws[k] * sc;
+          pos += free + w / 2;
+          addFrame(list[k], room, sg.side, pos, sc);
+          pos += w / 2;
+        });
       });
     });
   })();
@@ -391,28 +508,35 @@ canvas#gl:active { cursor: grabbing; }
   var B = makeAvatar({ name: 'Alprince', skin: 0xc58f66, hair: 0x181214, shirt: 0x6f3e49, pants: 0x4a5560, chain: true });
 
   /* ---------- state ---------- */
-  var P = { x: 0, z: 5.2 };        // point between the two
+  var P = { x: -14, z: -3 };       // point between the two
   var heading = Math.PI;           // facing -z (toward the dark wall)
   var camYaw = 0, camPitch = 0.34, camDist = 5.4;
-  var camTarget = new THREE.Vector3(0, 1.3, 5.2);
+  var camTarget = new THREE.Vector3(-14, 1.3, -3);
   var joy = { x: 0, y: 0 };
   var keys = {};
   var tour = false, wpIndex = 0;
-  var WAYPOINTS = [[-HX + 4, -HZ + 4], [HX - 4, -HZ + 4], [HX - 4, HZ - 4], [-HX + 4, HZ - 4]];
+  var WAYPOINTS = (function () {
+    var R = ROOMS, w = [];
+    function C(i) { return R[i]; }
+    // top row, west to east
+    [0, 1, 2].forEach(function (i) {
+      var r = C(i);
+      if (i < 2) w.push([r.cx - 5, r.cz], [r.cx - 4, r.cz - 3], [r.cx + 4, r.cz - 3], [r.cx + 5, r.cz]);
+      else w.push([r.cx - 5, r.cz], [r.cx - 4, r.cz - 3], [r.cx + 4, r.cz - 3], [r.cx + 4, r.cz + 3], [r.cx, r.cz + 3]);
+    });
+    // bottom row, east to west
+    var r5 = C(5); w.push([r5.cx, r5.cz - 3], [r5.cx + 4, r5.cz - 3], [r5.cx + 4, r5.cz + 3], [r5.cx - 4, r5.cz + 3], [r5.cx - 4, r5.cz]);
+    var r4 = C(4); w.push([r4.cx + 5, r4.cz], [r4.cx + 4, r4.cz + 3], [r4.cx - 4, r4.cz + 3], [r4.cx - 5, r4.cz]);
+    var r3 = C(3); w.push([r3.cx + 5, r3.cz], [r3.cx + 4, r3.cz + 3], [r3.cx - 4, r3.cz + 3], [r3.cx - 4, r3.cz - 3], [r3.cx, r3.cz - 3]);
+    var r0 = C(0); w.push([r0.cx, r0.cz + 3]);
+    return w;
+  })();
   var SIDE = 0.5;
-  var pos = { a: new THREE.Vector3(-SIDE, 0, 5.2), b: new THREE.Vector3(SIDE, 0, 5.2) };
+  var pos = { a: new THREE.Vector3(-14 - SIDE, 0, -3), b: new THREE.Vector3(-14 + SIDE, 0, -3) };
   var hintEl = document.getElementById('hint');
   var moved = false;
 
-  function clampP() {
-    P.x = Math.max(-HX + 1.7, Math.min(HX - 1.7, P.x));
-    P.z = Math.max(-HZ + 1.7, Math.min(HZ - 1.7, P.z));
-    var bx = 2.5, bz = 1.35;           // bench keep-out
-    if (Math.abs(P.x) < bx && Math.abs(P.z) < bz) {
-      var dx = bx - Math.abs(P.x), dz = bz - Math.abs(P.z);
-      if (dz < dx) P.z = (P.z >= 0 ? 1 : -1) * bz; else P.x = (P.x >= 0 ? 1 : -1) * bx;
-    }
-  }
+  function clampP() { pushOut(P, 0.8, WALLS_AND_BENCHES); }
   function angDiff(a, b) { var d = a - b; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return d; }
   function setTour(on) {
     tour = on;
@@ -571,8 +695,15 @@ canvas#gl:active { cursor: grabbing; }
     var camX = camTarget.x + Math.sin(camYaw) * cp * camDist;
     var camZ = camTarget.z + Math.cos(camYaw) * cp * camDist;
     var camY = 1.2 + sp * camDist;
-    camX = Math.max(-HX + 0.5, Math.min(HX - 0.5, camX));
-    camZ = Math.max(-HZ + 0.5, Math.min(HZ - 0.5, camZ));
+    var cpnt = { x: camX, z: camZ };
+    // keep the camera on the avatars' side of any wall between them
+    var seg = 6, ok = true;
+    for (var si = 1; si <= seg; si++) {
+      var qx = camTarget.x + (camX - camTarget.x) * si / seg, qz = camTarget.z + (camZ - camTarget.z) * si / seg;
+      var hit = false;
+      for (var bi = 0; bi < SOLIDS.length; bi++) { var bx = SOLIDS[bi]; if (qx > bx.x0 - 0.3 && qx < bx.x1 + 0.3 && qz > bx.z0 - 0.3 && qz < bx.z1 + 0.3) { hit = true; break; } }
+      if (hit) { var f = Math.max(0.15, (si - 1.4) / seg); camX = camTarget.x + (cpnt.x - camTarget.x) * f; camZ = camTarget.z + (cpnt.z - camTarget.z) * f; break; }
+    }
     camY = Math.max(0.9, Math.min(RH - 0.3, camY));
     camera.position.set(camX, camY, camZ);
     camera.lookAt(camTarget.x, 1.15, camTarget.z);
