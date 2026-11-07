@@ -103,6 +103,7 @@ canvas#gl:active { cursor: grabbing; }
   padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
 }
 .viewer.open { display: flex; }
+.viewer video { display: none; max-width: 100%; max-height: 82vh; max-height: 82dvh; width: auto; height: auto; background: #000; box-shadow: 0 24px 60px -24px rgba(44,34,38,.45); }
 .viewer img { max-width: 100%; max-height: 82vh; max-height: 82dvh; width: auto; height: auto; box-shadow: 0 24px 60px -24px rgba(44,34,38,.45); }
 .viewer .count {
   position: absolute; top: calc(18px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
@@ -118,7 +119,7 @@ canvas#gl:active { cursor: grabbing; }
 .viewer .ctl:hover { color: var(--rose); }
 .viewer .ctl:focus-visible { outline: 2px solid var(--rose); outline-offset: -4px; }
 @media (max-width: 600px) {
-  .viewer img { max-height: 76dvh; }
+  .viewer img, .viewer video { max-height: 76dvh; }
   .viewer .prev, .viewer .next { top: auto; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); transform: none; }
   .viewer .prev { left: 24px; } .viewer .next { right: 24px; }
 }
@@ -147,14 +148,16 @@ canvas#gl:active { cursor: grabbing; }
   <button class="ctl close" type="button" id="close" aria-label="Хаах">&times;</button>
   <button class="ctl prev" type="button" id="prev" aria-label="Өмнөх">&#8249;</button>
   <img id="big" alt="">
+  <video id="bigv" controls playsinline preload="metadata"></video>
   <button class="ctl next" type="button" id="next" aria-label="Дараах">&#8250;</button>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 (function () {
-  var TOTAL = 54;
-  var ASP = [0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.7498, 0.7498, 0.7498, 0.5629, 0.5629, 0.5629, 0.5629, 0.5629, 1.3333, 1.7766, 1.3333, 0.5629, 1.3333, 1.3333, 1.3333, 1.3333, 0.5629, 0.5629, 1.3333, 1.3333, 1.7766, 0.5629, 0.5629, 0.5629, 0.5629, 0.5629, 0.5629, 0.5629, 1.3333, 1.3333, 1.3333, 1.0463, 0.5629, 1.3333, 1.3333, 1.3333, 0.75, 1.7766];
+  var TOTAL = 71;
+  var ASP = [0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.5627, 0.7498, 0.7498, 0.7498, 0.5629, 0.5629, 0.5629, 0.5629, 0.5629, 1.3333, 1.7766, 1.3333, 0.5629, 1.3333, 1.3333, 1.3333, 1.3333, 0.5629, 0.5629, 1.3333, 1.3333, 1.7766, 0.5629, 0.5629, 0.5629, 0.5629, 0.5629, 0.5629, 0.5629, 1.3333, 1.3333, 1.3333, 1.0463, 0.5629, 1.3333, 1.3333, 1.3333, 0.75, 1.7766, 1.7766, 0.563, 0.5629, 0.5621, 0.5629, 0.75, 0.75, 0.75, 0.75, 1.7766, 0.5629, 0.5629, 1.7766, 1.3333, 1.3333, 0.4655, 0.5618];
+  var VID = { 69: 'vid/70.mp4', 70: 'vid/71.mp4' };   // zero-based index -> video
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
   function src(n) { return 'img/' + pad(n) + '.jpg'; }
   function tsrc(n) { return 'tex/' + pad(n) + '.jpg'; }
@@ -165,12 +168,17 @@ canvas#gl:active { cursor: grabbing; }
   var cur = 0, lastFocus = null;
   function show(i) {
     cur = (i + TOTAL) % TOTAL;
-    big.src = src(cur + 1);
+    var bv = document.getElementById('bigv');
+    if (VID[cur]) {
+      big.style.display = 'none'; bv.style.display = 'block'; bv.poster = src(cur + 1); bv.src = VID[cur];
+    } else {
+      bv.pause(); bv.removeAttribute('src'); bv.style.display = 'none'; big.style.display = ''; big.src = src(cur + 1);
+    }
     big.alt = 'Дурсамжийн зураг ' + (cur + 1);
     countEl.textContent = (cur + 1) + ' / ' + TOTAL;
   }
   function openViewer(i) { show(i); viewer.classList.add('open'); document.getElementById('close').focus(); }
-  function closeViewer() { viewer.classList.remove('open'); }
+  function closeViewer() { viewer.classList.remove('open'); var bv = document.getElementById('bigv'); bv.pause(); }
   document.getElementById('close').addEventListener('click', closeViewer);
   document.getElementById('prev').addEventListener('click', function () { show(cur - 1); });
   document.getElementById('next').addEventListener('click', function () { show(cur + 1); });
@@ -391,6 +399,15 @@ canvas#gl:active { cursor: grabbing; }
     var pic = new THREE.Mesh(new THREE.PlaneGeometry(w, h), pm);
     pic.position.z = 0.058; pic.userData.index = n - 1; g.add(pic);
     pickables.push(pic);
+    if (VID[n - 1]) {
+      var pc = document.createElement('canvas'); pc.width = pc.height = 128;
+      var px = pc.getContext('2d');
+      px.fillStyle = 'rgba(247,240,240,0.88)'; px.beginPath(); px.arc(64, 64, 58, 0, 7); px.fill();
+      px.fillStyle = '#b0636f'; px.beginPath(); px.moveTo(50, 36); px.lineTo(50, 92); px.lineTo(96, 64); px.closePath(); px.fill();
+      var badge = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.7), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(pc), transparent: true }));
+      badge.position.z = 0.062; g.add(badge);
+      badge.userData.index = n - 1; pickables.push(badge);
+    }
     loader.load(tsrc(n), function (tx) {
       tx.encoding = THREE.sRGBEncoding; tx.anisotropy = maxAniso;
       pm.map = tx; pm.color.set(0xffffff); pm.needsUpdate = true;
