@@ -55,12 +55,13 @@ canvas#gl:active { cursor: grabbing; }
   cursor: pointer; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
 }
 .pill[aria-pressed="true"] { border-color: var(--rose); color: var(--rose); }
+.pill.music { top: 62px; padding: 11px 14px; font-size: 15px; }
 .pill:focus-visible, .stick:focus-visible { outline: 2px solid var(--rose); outline-offset: 3px; }
 
 .hint {
   left: 50%; transform: translateX(-50%);
   bottom: calc(26px + env(safe-area-inset-bottom, 0px));
-  width: max-content; max-width: calc(100% - 200px);
+  width: max-content; max-width: calc(100% - 250px);
   text-align: center; pointer-events: none;
   font-size: 12px; letter-spacing: .06em; color: var(--ink-soft);
   background: var(--glass); padding: 8px 14px; border-radius: 999px;
@@ -71,14 +72,14 @@ canvas#gl:active { cursor: grabbing; }
 @media (hover: hover) and (pointer: fine) { .hint .kb { display: inline; } .hint .tc { display: none; } }
 
 .stick {
-  left: calc(22px + env(safe-area-inset-left, 0px));
-  bottom: calc(22px + env(safe-area-inset-bottom, 0px));
-  width: 112px; height: 112px; border-radius: 50%;
+  left: calc(20px + env(safe-area-inset-left, 0px));
+  bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  width: 178px; height: 178px; border-radius: 50%;
   border: 1px solid var(--line); background: var(--glass);
   touch-action: none; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
 }
 .stick i {
-  position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px;
+  position: absolute; left: 50%; top: 50%; width: 76px; height: 76px; margin: -38px 0 0 -38px;
   border-radius: 50%; background: var(--rose); opacity: .85; transition: transform .08s linear;
 }
 
@@ -129,6 +130,7 @@ canvas#gl:active { cursor: grabbing; }
 <div id="stage">
   <canvas id="gl" aria-label="Хоёр эрэгтэй алхаж буй 3D дурсамжийн галерей"></canvas>
   <div class="ui title">JayBee.B &amp; Alprince Macaraeg Igne<small>Бидний дурсамж</small></div>
+  <button class="ui pill music" id="music" type="button" aria-pressed="true" aria-label="Хөгжим асаах/унтраах">♪ Хөгжим</button>
   <button class="ui pill" id="tour" type="button" aria-pressed="false">Автомат алхах</button>
   <div class="ui hint" id="hint">
     <span class="tc">Дугуйг чирж алхана · дэлгэцийг чирж эргэнэ · зураг дээр дарна</span>
@@ -572,7 +574,7 @@ canvas#gl:active { cursor: grabbing; }
 
   /* ---------- controls ---------- */
   var stick = document.getElementById('stick'), knob = document.getElementById('knob');
-  var stickId = null, sCx = 0, sCy = 0, R = 42;
+  var stickId = null, sCx = 0, sCy = 0, R = 60;
   function stickMove(e) {
     var dx = e.clientX - sCx, dy = e.clientY - sCy, d = Math.hypot(dx, dy);
     if (d > R) { dx = dx / d * R; dy = dy / d * R; }
@@ -728,5 +730,66 @@ canvas#gl:active { cursor: grabbing; }
     renderer.render(scene, camera);
   }
   requestAnimationFrame(frame);
+})();
+</script>
+
+<script>
+/* Soft generative romantic music (Web Audio, no files): warm pads + slow arpeggio + gentle melody.
+   Starts on the first touch/click (browsers require a gesture), loops forever, can be muted. */
+(function () {
+  var AC = window.AudioContext || window.webkitAudioContext, btn = document.getElementById('music');
+  if (!AC || !btn) { if (btn) btn.style.display = 'none'; return; }
+  var ctx = null, master, bus, on = true, started = false, timer = null, nextT = 0, step = 0;
+  try { if (localStorage.getItem('jb-music') === 'off') on = false; } catch (e) {}
+  function paint() { btn.setAttribute('aria-pressed', on ? 'true' : 'false'); btn.textContent = on ? '♪ Хөгжим' : '♪ Дуугүй'; btn.style.opacity = on ? 1 : .65; }
+  paint();
+  function hz(m) { return 440 * Math.pow(2, (m - 69) / 12); }
+  var CH = [[48, 55, 59, 64], [45, 52, 55, 60], [41, 48, 52, 57], [43, 50, 55, 59]]; // Cmaj7 Am7 Fmaj7 G6
+  var ARP = [0, 1, 2, 3, 2, 1, 2, 3];
+  var MEL = [[76, 0, 74, 0, 72, 0, 0, 0], [72, 0, 76, 0, 79, 0, 76, 0], [77, 0, 76, 0, 72, 0, 0, 0], [74, 0, 71, 0, 74, 0, 79, 0]];
+  var BEAT = 0.62;
+  function setup() {
+    ctx = new AC();
+    master = ctx.createGain(); master.gain.value = 0; master.connect(ctx.destination);
+    var lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 2600; lp.connect(master);
+    bus = ctx.createGain(); bus.connect(lp);
+    var d = ctx.createDelay(1); d.delayTime.value = 0.43; var fb = ctx.createGain(); fb.gain.value = 0.38;
+    var wet = ctx.createGain(); wet.gain.value = 0.34; var dl = ctx.createBiquadFilter(); dl.type = 'lowpass'; dl.frequency.value = 1800;
+    bus.connect(d); d.connect(dl); dl.connect(fb); fb.connect(d); dl.connect(wet); wet.connect(lp);
+  }
+  function note(m, t, dur, type, vol, atk) {
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type; o.frequency.value = hz(m); o.detune.value = (Math.random() - .5) * 8;
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + atk);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(bus); o.start(t); o.stop(t + dur + 0.05);
+  }
+  function pluck(m, t, vol) { note(m, t, 2.4, 'triangle', vol, 0.012); note(m + 12, t, 1.2, 'sine', vol * .35, 0.01); }
+  function schedule() {
+    while (nextT < ctx.currentTime + 1.2) {
+      var bar = Math.floor(step / 8) % 4, s = step % 8, ch = CH[bar];
+      if (s === 0) { for (var i = 0; i < ch.length; i++) note(ch[i] + (i ? 0 : -12), nextT, BEAT * 8.4, 'sine', i ? 0.05 : 0.09, 1.6); }
+      pluck(ch[ARP[s]] + 12, nextT, 0.075);
+      var mm = MEL[bar][s]; if (mm) { note(mm, nextT, 2.2, 'sine', 0.085, 0.05); note(mm + 12, nextT, 1.4, 'sine', 0.018, 0.05); }
+      nextT += BEAT; step++;
+    }
+  }
+  function start() {
+    if (started) { if (on && ctx.state === 'suspended') ctx.resume(); return; }
+    started = true; setup(); ctx.resume(); nextT = ctx.currentTime + 0.1;
+    timer = setInterval(function () { if (on) schedule(); else nextT = ctx.currentTime + 0.1; }, 250);
+    master.gain.setTargetAtTime(on ? 0.9 : 0, ctx.currentTime, 1.5);
+  }
+  ['pointerdown', 'touchend', 'keydown', 'click'].forEach(function (ev) {
+    window.addEventListener(ev, function (e) { if (e.target === btn) return; if (on) start(); }, { passive: true });
+  });
+  btn.addEventListener('click', function () {
+    on = !on; paint(); try { localStorage.setItem('jb-music', on ? 'on' : 'off'); } catch (e) {}
+    if (on) start();
+    if (started) { master.gain.setTargetAtTime(on ? 0.9 : 0, ctx.currentTime, 0.6); if (on) { ctx.resume(); nextT = ctx.currentTime + 0.1; } }
+  });
+  document.addEventListener('visibilitychange', function () {
+    if (!started) return; if (document.hidden) ctx.suspend(); else if (on) ctx.resume();
+  });
 })();
 </script>
