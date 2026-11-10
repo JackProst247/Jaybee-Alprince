@@ -107,39 +107,74 @@ footer p {
 }
 
 /* viewer */
-.viewer {
-  position: fixed; inset: 0; z-index: 50; display: none;
-  background: color-mix(in srgb, var(--paper) 96%, transparent);
-  align-items: center; justify-content: center;
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  padding-left: env(safe-area-inset-left, 0px);
-  padding-right: env(safe-area-inset-right, 0px);
+/* viewer: frosted-glass carousel (centre card, curved neighbours, floating dock) */
+.viewer { position: fixed; inset: 0; z-index: 50; display: none; overflow: hidden; color: #fff; background: rgba(22, 17, 20, .82); font-family: var(--font-body); }
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .viewer { background: rgba(26, 19, 23, .44); -webkit-backdrop-filter: blur(30px) saturate(1.35); backdrop-filter: blur(30px) saturate(1.35); }
 }
-.viewer.open { display: flex; }
-.viewer video { display: none; max-width: 100%; max-height: 82vh; max-height: 82dvh; width: auto; height: auto; background: #000; box-shadow: 0 24px 60px -24px rgba(44, 34, 38, .45); }
-.viewer img {
-  max-width: 100%; max-height: 82vh; max-height: 82dvh; width: auto; height: auto;
-  box-shadow: 0 24px 60px -24px rgba(44, 34, 38, .45);
+.viewer.open { display: block; animation: vfade .35s ease; }
+@keyframes vfade { from { opacity: 0; } to { opacity: 1; } }
+.vstage { position: absolute; inset: 0; perspective: 1700px; perspective-origin: 50% 38%; touch-action: pan-y; }
+.vcard {
+  position: absolute; left: 50%; top: 45%; border-radius: 30px; overflow: hidden; cursor: pointer;
+  background: rgba(255, 255, 255, .1); backface-visibility: hidden; will-change: transform, opacity;
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .55), inset 0 0 0 1px rgba(255, 255, 255, .28);
+  transition: transform .6s cubic-bezier(.22, .8, .24, 1), opacity .45s ease;
 }
-.viewer .count {
-  position: absolute; top: calc(18px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
-  font-size: 12px; letter-spacing: .28em; color: var(--ink-soft); font-variant-numeric: tabular-nums;
+.vcard.center { cursor: default; }
+.vimg { position: relative; width: 100%; background: #1c1618; overflow: hidden; }
+.vimg img, .vimg video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; -webkit-user-drag: none; user-select: none; }
+.vimg video { background: #000; object-fit: contain; }
+.vcard:not(.center) .vimg::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(255, 255, 255, .14), rgba(255, 255, 255, .03)); }
+.vcard:not(.center) .vimg img { filter: saturate(.9) brightness(.88); }
+.vcap {
+  height: 76px; padding: 10px 22px; display: flex; flex-direction: column; justify-content: center; gap: 3px;
+  background: rgba(64, 52, 58, .62); border-top: 1px solid rgba(255, 255, 255, .22); transition: opacity .4s ease;
 }
-.viewer .ctl {
-  position: absolute; background: none; border: 0; color: var(--ink); cursor: pointer;
-  font-family: var(--font-display); font-size: 40px; line-height: 1; padding: 14px 18px;
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .vcap { background: rgba(255, 255, 255, .16); -webkit-backdrop-filter: blur(22px) saturate(1.5); backdrop-filter: blur(22px) saturate(1.5); }
 }
-.viewer .close { top: calc(6px + env(safe-area-inset-top, 0px)); right: calc(6px + env(safe-area-inset-right, 0px)); font-size: 34px; }
-.viewer .prev { left: calc(2px + env(safe-area-inset-left, 0px)); top: 50%; transform: translateY(-50%); }
-.viewer .next { right: calc(2px + env(safe-area-inset-right, 0px)); top: 50%; transform: translateY(-50%); }
-.viewer .ctl:hover { color: var(--rose); }
-.viewer .ctl:focus-visible { outline: 2px solid var(--rose); outline-offset: -4px; }
-@media (max-width: 600px) {
-  .viewer img, .viewer video { max-height: 76dvh; }
-  .viewer .prev, .viewer .next { top: auto; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); transform: none; }
-  .viewer .prev { left: 24px; } .viewer .next { right: 24px; }
+.vcard:not(.center) .vcap { opacity: .55; }
+.vcap b { font-family: var(--font-display); font-style: italic; font-weight: 400; font-size: 23px; line-height: 1.1; }
+.vcap span { font-size: 11px; letter-spacing: .2em; text-transform: uppercase; opacity: .78; }
+
+.vglass {
+  height: 44px; min-width: 44px; padding: 0 16px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  color: #fff; font: 400 14px/1 var(--font-body); letter-spacing: .03em; cursor: pointer;
+  background: rgba(70, 58, 64, .6); border: 1px solid rgba(255, 255, 255, .3);
+  transition: background .2s ease;
 }
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .vglass { background: rgba(255, 255, 255, .16); -webkit-backdrop-filter: blur(18px) saturate(1.4); backdrop-filter: blur(18px) saturate(1.4); }
+}
+.vglass:hover { background: rgba(255, 255, 255, .28); }
+.vglass:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.vtop {
+  position: absolute; left: 0; right: 0; top: calc(14px + env(safe-area-inset-top, 0px)); z-index: 3;
+  display: flex; justify-content: space-between; align-items: center; pointer-events: none;
+  padding: 0 max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px));
+}
+.vtop > * { pointer-events: auto; }
+.vtop .vcount { pointer-events: none; font-variant-numeric: tabular-nums; }
+.vdock {
+  position: absolute; left: 50%; transform: translateX(-50%); z-index: 3;
+  bottom: calc(32px + env(safe-area-inset-bottom, 0px)); width: min(92vw, 440px); height: 72px;
+  display: flex; align-items: center; gap: 12px; padding: 0 10px; border-radius: 36px; transition: opacity .3s ease;
+  background: rgba(70, 58, 64, .6); border: 1px solid rgba(255, 255, 255, .3);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .vdock { background: rgba(255, 255, 255, .15); -webkit-backdrop-filter: blur(24px) saturate(1.5); backdrop-filter: blur(24px) saturate(1.5); }
+}
+.vdock .vglass { padding: 0; width: 44px; font-size: 26px; line-height: 1; flex: none; }
+.vthumb { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; flex: none; border: 2px solid rgba(255, 255, 255, .55); background: #2a2025; }
+.vmeta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.vmeta b { font: 400 14px/1.2 var(--font-body); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vmeta span { font-size: 12px; opacity: .72; font-variant-numeric: tabular-nums; }
+.vbar { position: absolute; left: 50%; transform: translateX(-50%); z-index: 3; bottom: calc(15px + env(safe-area-inset-bottom, 0px)); width: 84px; height: 4px; border-radius: 4px; background: rgba(255, 255, 255, .28); overflow: hidden; transition: opacity .3s ease; }
+.vbar i { display: block; height: 100%; border-radius: 4px; background: #fff; transition: width .5s ease; }
+.viewer.expanded .vdock, .viewer.expanded .vbar { opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .vcard, .vbar i, .viewer.open { transition: none; animation: none; } }
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .tile button img { transition: none; }
@@ -148,16 +183,16 @@ footer p {
 
 <div class="wrap">
   <header>
-    <p class="kicker">Бидний дурсамж</p>
+    <p class="kicker">Our memories</p>
     <h1>JayBee.B <span class="amp">&amp;</span> Alprince Macaraeg Igne</h1>
     <hr class="rule">
   </header>
 
   <figure class="feature">
-    <button type="button" data-i="0" aria-label="Зургийг томруулах">
-      <img src="img/01.jpg" alt="Хоёулаа хамт, ойр ойрхон" width="1100" height="825">
+    <button type="button" data-i="0" aria-label="Enlarge photo">
+      <img src="img/01.jpg" alt="The two of us, close together" width="1100" height="825">
     </button>
-    <figcaption class="cap">хоёулаа, ойрхон</figcaption>
+    <figcaption class="cap">the two of us, close</figcaption>
   </figure>
 
   <main class="drift" id="drift"></main>
@@ -168,14 +203,22 @@ footer p {
   </footer>
 </div>
 
-<div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-label="Зураг үзэх">
-  <span class="count" id="count"></span>
-  <button class="ctl close" type="button" id="close" aria-label="Хаах">&times;</button>
-  <button class="ctl prev" type="button" id="prev" aria-label="Өмнөх">&#8249;</button>
-  <img id="big" alt="">
-  <video id="bigv" controls playsinline preload="metadata"></video>
-  <button class="ctl next" type="button" id="next" aria-label="Дараах">&#8250;</button>
+<div class="viewer" id="viewer" role="dialog" aria-modal="true" aria-label="Photo viewer">
+  <div class="vstage" id="vstage"></div>
+  <div class="vtop">
+    <button class="vglass" type="button" id="close" aria-label="Close viewer">&#10005;</button>
+    <button class="vglass" type="button" id="expand" aria-pressed="false">&#10530; Expand</button>
+    <span class="vglass vcount" id="count" aria-live="polite"></span>
+  </div>
+  <div class="vdock" id="vdock">
+    <button class="vglass" type="button" id="prev" aria-label="Previous photo">&#8249;</button>
+    <img class="vthumb" id="vthumb" alt="">
+    <div class="vmeta"><b>JayBee.B &amp; Alprince</b><span id="vsub"></span></div>
+    <button class="vglass" type="button" id="next" aria-label="Next photo">&#8250;</button>
+  </div>
+  <div class="vbar" aria-hidden="true"><i id="vbarfill"></i></div>
 </div>
+
 
 <script>
 (function () {
@@ -196,10 +239,10 @@ footer p {
     var b = document.createElement('button');
     b.type = 'button';
     b.setAttribute('data-i', idx);
-    b.setAttribute('aria-label', 'Зургийг томруулах');
+    b.setAttribute('aria-label', 'Enlarge photo');
     var im = document.createElement('img');
     im.src = sources[idx];
-    im.alt = 'Дурсамжийн зураг ' + n;
+    im.alt = 'Memory photo ' + n;
     im.loading = 'lazy';
     im.decoding = 'async';
     im.width = 1000; im.height = Math.round(1000 / ASP[n - 1]);
@@ -208,53 +251,136 @@ footer p {
     drift.appendChild(fig);
   });
 
-  var viewer = document.getElementById('viewer');
-  var big = document.getElementById('big');
-  var count = document.getElementById('count');
-  var cur = 0, lastFocus = null;
+  var TOTAL = total;
+  var WHEN = ["April 2026", "April 2026", "April 2026", "April 2026", "April 2026", "April 2026", "April 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "May 2026", "June 2026", "June 2026", "September 2026", "September 2026", "September 2026", "September 2026", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""];
+  function srcOf(i) { return sources[i]; }
 
+  /* ---------- viewer: frosted-glass carousel ---------- */
+  var viewer = document.getElementById('viewer');
+  var vstage = document.getElementById('vstage');
+  var countEl = document.getElementById('count');
+  var cur = 0, lastFocus = null, expanded = false, vcards = {};
+  var CAPH = 76;
+  function rel(idx) { var d = idx - cur; if (d > TOTAL / 2) d -= TOTAL; if (d < -TOTAL / 2) d += TOTAL; return d; }
+  function wrapIdx(i) { return ((i % TOTAL) + TOTAL) % TOTAL; }
+  function titleOf(idx) { return 'Memory ' + (idx + 1); }
+  function subOf(idx) { var p = []; if (WHEN[idx]) p.push(WHEN[idx]); if (VID[idx]) p.push('Video'); return p.join(' · ') || 'Together'; }
+  function makeCard(idx) {
+    var el = document.createElement('div'); el.className = 'vcard';
+    var box = document.createElement('div'); box.className = 'vimg';
+    var im = document.createElement('img'); im.decoding = 'async'; im.draggable = false; im.alt = 'Memory photo ' + (idx + 1); im.src = srcOf(idx);
+    box.appendChild(im); el.appendChild(box);
+    var cap = document.createElement('div'); cap.className = 'vcap';
+    cap.innerHTML = '<b></b><span></span>'; cap.firstChild.textContent = titleOf(idx); cap.lastChild.textContent = subOf(idx);
+    el.appendChild(cap);
+    el.dataset.idx = idx;
+    var c = { el: el, box: box, img: im, vid: null, idx: idx };
+    vstage.appendChild(el); return c;
+  }
+  function attachVideo(c, on) {
+    if (on && !c.vid && VID[c.idx]) {
+      var v = document.createElement('video'); v.controls = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.preload = 'metadata';
+      v.poster = srcOf(c.idx); v.src = VID[c.idx]; c.box.appendChild(v); c.vid = v;
+    } else if (!on && c.vid) { c.vid.pause(); c.vid.removeAttribute('src'); c.vid.load(); c.vid.remove(); c.vid = null; }
+  }
+  function cardSize(idx, mw, mh) { var a = ASP[idx], w = Math.min(mw, mh * a); return { w: Math.round(w), h: Math.round(w / a) }; }
+  function layout() {
+    var vw = window.innerWidth, vh = window.innerHeight, narrow = vw < 640;
+    var topPad = 70, botPad = narrow ? 150 : 160;
+    var mw, mh, cy;
+    if (expanded) { mw = vw - 24; mh = vh - 24 - CAPH; cy = vh / 2; }
+    else { mw = Math.min(vw * (narrow ? 0.86 : 0.74), 700); mh = Math.min(vh - topPad - botPad - CAPH, 760); cy = topPad + (vh - topPad - botPad) / 2; }
+    mh = Math.max(mh, 160);
+    var need = {};
+    for (var t = -2; t <= 2; t++) need[wrapIdx(cur + t)] = true;
+    Object.keys(need).forEach(function (k) { if (!vcards[k]) { vcards[k] = makeCard(+k); vcards[k].fresh = true; } });
+    var cs = cardSize(cur, mw, mh);
+    var cursor = { '-1': cs.w / 2 + 14, '1': cs.w / 2 + 14 };
+    var X = {};
+    [-1, 1].forEach(function (side) {
+      for (var s = 1; s <= 2; s++) {
+        var idx = wrapIdx(cur + side * s), sz = cardSize(idx, mw, mh), sc = s === 1 ? 0.86 : 0.74, rot = 34 + (s - 1) * 6;
+        var half = sz.w * sc * 0.5 * Math.cos(rot * Math.PI / 180) + 4;
+        X[idx] = { x: side * (cursor[side] + half), side: side, s: s, sc: sc, rot: rot };
+        cursor[side] += half * 2 + 6;
+      }
+    });
+    Object.keys(vcards).forEach(function (k) {
+      var c = vcards[k], idx = +k, d = rel(idx), sz = cardSize(idx, mw, mh), x = 0, z = 0, ry = 0, sc = 1, op = 1, isC = d === 0;
+      if (!isC && X[idx] && Math.abs(d) <= 2) { var g = X[idx]; x = g.x; z = -150 * g.s; ry = -g.side * g.rot; sc = g.sc; op = expanded ? 0 : (g.s === 1 ? 0.95 : 0.6); }
+      else if (!isC) { x = (d > 0 ? 1 : -1) * (cs.w / 2 + 400); z = -420; ry = d > 0 ? -50 : 50; sc = 0.6; op = 0; }
+      var tf = 'translate(-50%,-50%) translate3d(' + Math.round(x) + 'px,0,' + z + 'px) rotateY(' + ry + 'deg) scale(' + sc + ')';
+      if (c.fresh) { c.el.style.transition = 'none'; }
+      c.el.style.width = sz.w + 'px'; c.box.style.height = sz.h + 'px';
+      c.el.style.top = cy + 'px'; c.el.style.transform = tf;
+      c.el.style.zIndex = String(10 - Math.abs(d));
+      c.el.classList.toggle('center', isC);
+      c.el.setAttribute('aria-hidden', isC ? 'false' : 'true');
+      if (c.fresh) { c.el.style.opacity = '0'; void c.el.offsetWidth; c.el.style.transition = ''; c.fresh = false; }
+      c.el.style.opacity = String(op);
+      c.el.style.pointerEvents = op === 0 ? 'none' : '';
+      attachVideo(c, isC);
+      if (Math.abs(d) > 2 && !c.dying) { c.dying = true; setTimeout(function () { if (Math.abs(rel(c.idx)) > 2) { attachVideo(c, false); c.el.remove(); delete vcards[c.idx]; } else c.dying = false; }, 650); }
+      else if (Math.abs(d) <= 2) c.dying = false;
+    });
+    viewer.classList.toggle('expanded', expanded);
+  }
   function show(i) {
-    cur = (i + total) % total;
-    var bv = document.getElementById('bigv');
-    if (VID[cur]) { big.style.display = 'none'; bv.style.display = 'block'; bv.poster = sources[cur]; bv.src = VID[cur]; }
-    else { bv.pause(); bv.removeAttribute('src'); bv.style.display = 'none'; big.style.display = ''; big.src = sources[cur]; }
-    big.alt = 'Дурсамжийн зураг ' + (cur + 1);
-    count.textContent = (cur + 1) + ' / ' + total;
+    cur = wrapIdx(i);
+    countEl.textContent = (cur + 1) + ' / ' + TOTAL;
+    document.getElementById('vthumb').src = srcOf(cur);
+    document.getElementById('vsub').textContent = titleOf(cur) + ' of ' + TOTAL + (WHEN[cur] ? ' · ' + WHEN[cur] : '');
+    document.getElementById('vbarfill').style.width = ((cur + 1) / TOTAL * 100) + '%';
+    layout();
   }
-  function open(i, from) {
-    lastFocus = from || null;
-    show(i);
-    viewer.classList.add('open');
-    document.getElementById('close').focus();
+  function setExpanded(on) {
+    expanded = on; var b = document.getElementById('expand');
+    b.setAttribute('aria-pressed', on ? 'true' : 'false'); b.innerHTML = on ? '&#10531; Collapse' : '&#10530; Expand';
+    layout();
   }
-  function close() {
-    viewer.classList.remove('open'); document.getElementById('bigv').pause();
-    if (lastFocus) lastFocus.focus();
+  function openViewer(i, from) {
+    lastFocus = from || null; expanded = false; setExpanded(false);
+    viewer.classList.add('open'); document.documentElement.style.overflow = 'hidden';
+    show(i); document.getElementById('close').focus();
   }
+  function closeViewer() {
+    viewer.classList.remove('open'); document.documentElement.style.overflow = '';
+    Object.keys(vcards).forEach(function (k) { attachVideo(vcards[k], false); });
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+  document.getElementById('close').addEventListener('click', closeViewer);
+  document.getElementById('expand').addEventListener('click', function () { setExpanded(!expanded); });
+  document.getElementById('prev').addEventListener('click', function () { show(cur - 1); });
+  document.getElementById('next').addEventListener('click', function () { show(cur + 1); });
+  window.addEventListener('resize', function () { if (viewer.classList.contains('open')) layout(); });
+  var vdown = null, vswiped = false;
+  vstage.addEventListener('pointerdown', function (e) { vdown = { x: e.clientX, y: e.clientY }; vswiped = false; });
+  vstage.addEventListener('pointerup', function (e) {
+    if (!vdown) return; var dx = e.clientX - vdown.x, dy = e.clientY - vdown.y; vdown = null;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) { vswiped = true; show(dx < 0 ? cur + 1 : cur - 1); }
+  });
+  vstage.addEventListener('click', function (e) {
+    if (vswiped) { vswiped = false; return; }
+    var card = e.target.closest ? e.target.closest('.vcard') : null;
+    if (!card) { closeViewer(); return; }
+    var idx = +card.dataset.idx; if (idx !== cur) show(idx);
+  });
+  var wheelAt = 0;
+  viewer.addEventListener('wheel', function (e) {
+    var now = Date.now(); if (now - wheelAt < 380) return;
+    var d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    if (Math.abs(d) > 12) { wheelAt = now; show(d > 0 ? cur + 1 : cur - 1); }
+  }, { passive: true });
 
   document.addEventListener('click', function (e) {
     var b = e.target.closest('button[data-i]');
-    if (b) open(parseInt(b.getAttribute('data-i'), 10), b);
+    if (b) openViewer(parseInt(b.getAttribute('data-i'), 10), b);
   });
-  document.getElementById('close').addEventListener('click', close);
-  document.getElementById('prev').addEventListener('click', function () { show(cur - 1); });
-  document.getElementById('next').addEventListener('click', function () { show(cur + 1); });
-  viewer.addEventListener('click', function (e) { if (e.target === viewer) close(); });
-
   document.addEventListener('keydown', function (e) {
     if (!viewer.classList.contains('open')) return;
-    if (e.key === 'Escape') close();
+    if (e.key === 'Escape') closeViewer();
     else if (e.key === 'ArrowLeft') show(cur - 1);
     else if (e.key === 'ArrowRight') show(cur + 1);
   });
-
-  var sx = null;
-  viewer.addEventListener('touchstart', function (e) { sx = e.touches[0].clientX; }, { passive: true });
-  viewer.addEventListener('touchend', function (e) {
-    if (sx === null) return;
-    var dx = e.changedTouches[0].clientX - sx;
-    if (Math.abs(dx) > 50) show(dx < 0 ? cur + 1 : cur - 1);
-    sx = null;
-  }, { passive: true });
 })();
 </script>
