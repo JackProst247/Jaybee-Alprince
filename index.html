@@ -655,6 +655,31 @@ canvas#gl:active { cursor: grabbing; }
 
   var last = performance.now();
   var targetSpeed = 0;
+  var lookOff = 0, lookNx = 0, lookNz = 0, tourYaw = 0;
+  /* Auto-tour camera: sits inside the room, slightly behind the pair, and looks toward the wall
+     they are walking along so the photos stay in view. Dragging/joystick hands control back. */
+  function tourCamera(dt) {
+    var room = ROOMS[0], bd = 1e9;
+    ROOMS.forEach(function (r) { var d = Math.hypot(r.cx - P.x, r.cz - P.z); if (d < bd) { bd = d; room = r; } });
+    var fx = Math.sin(heading), fz = Math.cos(heading);
+    var nx, nz, wallYaw;
+    if (Math.abs(fx) > Math.abs(fz)) {      // walking east/west -> look at the nearer north/south wall
+      var dN = P.z - (room.cz - HZi), dS = (room.cz + HZi) - P.z;
+      if (dN < dS) { nx = 0; nz = 1; wallYaw = 0; } else { nx = 0; nz = -1; wallYaw = Math.PI; }
+    } else {                                 // walking north/south -> nearer east/west wall
+      var dW = P.x - (room.cx - HXi), dE = (room.cx + HXi) - P.x;
+      if (dW < dE) { nx = 1; nz = 0; wallYaw = Math.PI / 2; } else { nx = -1; nz = 0; wallYaw = -Math.PI / 2; }
+    }
+    var behind = heading + Math.PI;
+    var a1 = wallYaw + 0.55, a2 = wallYaw - 0.55;
+    var want = Math.abs(angDiff(a1, behind)) < Math.abs(angDiff(a2, behind)) ? a1 : a2;
+    var k = Math.min(1, dt * 1.3);
+    camYaw += angDiff(want, camYaw) * k;
+    camPitch += (0.2 - camPitch) * k;
+    camDist += (6.4 - camDist) * k;
+    lookNx += (-nx - lookNx) * k; lookNz += (-nz - lookNz) * k;
+    lookOff += (2.4 - lookOff) * k;
+  }
   function frame(now) {
     requestAnimationFrame(frame);
     var dt = Math.min(0.05, (now - last) / 1000); last = now;
@@ -683,7 +708,7 @@ canvas#gl:active { cursor: grabbing; }
         var w = WAYPOINTS[wpIndex];
         var dx = w[0] - P.x, dz = w[1] - P.z, d = Math.hypot(dx, dz);
         if (d < 0.35) { wpIndex = (wpIndex + 1) % WAYPOINTS.length; }
-        else { mx = dx / d; mz = dz / d; spd = 1.9; }
+        else { mx = dx / d; mz = dz / d; spd = 1.45; }
       }
       if (spd > 0) {
         P.x += mx * spd * dt; P.z += mz * spd * dt; clampP();
@@ -707,6 +732,13 @@ canvas#gl:active { cursor: grabbing; }
     animateAvatar(B, dt, Math.min(3.2, vb));
 
     // camera
+    var tourCam = tour && !frozen && !drag && mag <= 0.08;
+    if (tourCam) tourCamera(dt);
+    else {
+      var kk = Math.min(1, dt * 2.2);
+      lookOff += (0 - lookOff) * kk;
+      if (!drag && Math.abs(camDist - 5.4) > 0.02) { camDist += (5.4 - camDist) * kk; if (!tour) camPitch += (0.34 - camPitch) * kk; }
+    }
     var cx = (pos.a.x + pos.b.x) / 2, cz = (pos.a.z + pos.b.z) / 2;
     camTarget.x += (cx - camTarget.x) * Math.min(1, dt * 6);
     camTarget.z += (cz - camTarget.z) * Math.min(1, dt * 6);
@@ -725,7 +757,7 @@ canvas#gl:active { cursor: grabbing; }
     }
     camY = Math.max(0.9, Math.min(RH - 0.3, camY));
     camera.position.set(camX, camY, camZ);
-    camera.lookAt(camTarget.x, 1.15, camTarget.z);
+    camera.lookAt(camTarget.x + lookNx * lookOff, 1.15 + lookOff * 0.16, camTarget.z + lookNz * lookOff);
 
     renderer.render(scene, camera);
   }
